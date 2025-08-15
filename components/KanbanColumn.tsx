@@ -77,7 +77,7 @@ export function KanbanColumn({ column, onToggleCheck, onAddTask, isDone = false 
       {/* Tasks Container */}
       <div
         ref={setNodeRef}
-        className="min-h-[200px]"
+        className="min-h-[200px] flex flex-col gap-2"
       >
         <SortableContext
           items={column.tasks.map(t => t.id)}
@@ -95,7 +95,7 @@ export function KanbanColumn({ column, onToggleCheck, onAddTask, isDone = false 
         {/* Add Task Button or Form */}
         {column.id === 'todo' && (
           showForm ? (
-            <div className="p-3 bg-white rounded-md border border-gray-200 mb-2">
+            <div className="p-3 bg-white rounded-md border border-gray-200">
               <Input
                 placeholder="制造编号"
                 value={manufacturingKey}
