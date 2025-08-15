@@ -2,7 +2,6 @@
 
 import { Task } from '@/types/kanban';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import {
   CheckSquare2,
   Square,
@@ -69,7 +68,7 @@ export function TaskCard({ task, onToggleCheck }: TaskCardProps) {
             {task.labels.map((label, index) => (
               <span
                 key={index}
-                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-700"
+                className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${label.color}`}
               >
                 {label.text}
               </span>
@@ -95,9 +94,9 @@ export function TaskCard({ task, onToggleCheck }: TaskCardProps) {
               )}
             </button>
 
-            {/* Issue Key */}
+            {/* Manufacturing Key */}
             <span className="text-xs text-gray-600 font-medium">
-              {task.issueKey}
+              {task.manufacturingKey}
             </span>
 
             {/* Priority Icon */}
