@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Board, Column, Task } from '@/types/kanban';
 import { KanbanColumn } from './KanbanColumn';
 import {
@@ -24,23 +24,26 @@ import {
 } from '@dnd-kit/core';
 import {
   arrayMove,
-  SortableContext,
   sortableKeyboardCoordinates,
-  horizontalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { TaskCard } from './TaskCard';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
-interface KanbanBoardProps {
-  initialData: Board;
-}
-
-export function KanbanBoard({ initialData }: KanbanBoardProps) {
-  const [board, setBoard] = useState<Board>(initialData);
+export function KanbanBoard() {
+  const [board, setBoard] = useState<Board>({ columns: [] });
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    const load = async () => {
+      const res = await fetch('/api/board');
+      const data: Board = await res.json();
+      setBoard(data);
+    };
+    load();
+  }, []);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -62,7 +65,7 @@ export function KanbanBoard({ initialData }: KanbanBoardProps) {
     }
   };
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
 
     if (!over) {
@@ -105,54 +108,82 @@ export function KanbanBoard({ initialData }: KanbanBoardProps) {
     }
 
     if (sourceColumn && destinationColumn) {
-      setBoard(prevBoard => {
-        const newColumns = [...prevBoard.columns];
-        const sourceColIndex = newColumns.findIndex(c => c.id === sourceColumn.id);
-        const destColIndex = newColumns.findIndex(c => c.id === destinationColumn!.id);
+      const newColumns = [...board.columns];
+      const sourceColIndex = newColumns.findIndex(c => c.id === sourceColumn.id);
+      const destColIndex = newColumns.findIndex(c => c.id === destinationColumn.id);
+      let newIndex = destinationTaskIndex;
 
-        if (sourceColumn.id === destinationColumn.id) {
-          // Same column - reorder
-          const newTasks = arrayMove(
-            newColumns[sourceColIndex].tasks,
-            sourceTaskIndex,
-            destinationTaskIndex === -1 ? newColumns[sourceColIndex].tasks.length - 1 : destinationTaskIndex
-          );
-          newColumns[sourceColIndex] = {
-            ...newColumns[sourceColIndex],
-            tasks: newTasks
-          };
-        } else {
-          // Different columns - move task
-          const [movedTask] = newColumns[sourceColIndex].tasks.splice(sourceTaskIndex, 1);
+      if (sourceColIndex === -1 || destColIndex === -1) {
+        setActiveTask(null);
+        return;
+      }
 
-          if (destinationTaskIndex === -1) {
-            newColumns[destColIndex].tasks.push(movedTask);
-          } else {
-            newColumns[destColIndex].tasks.splice(destinationTaskIndex, 0, movedTask);
-          }
+      if (sourceColumn.id === destinationColumn.id) {
+        const newTasks = arrayMove(
+          newColumns[sourceColIndex].tasks,
+          sourceTaskIndex,
+          destinationTaskIndex === -1 ? newColumns[sourceColIndex].tasks.length - 1 : destinationTaskIndex
+        );
+        newColumns[sourceColIndex] = {
+          ...newColumns[sourceColIndex],
+          tasks: newTasks
+        };
+        newIndex = newTasks.findIndex(t => t.id === activeId);
+      } else {
+        const [movedTask] = newColumns[sourceColIndex].tasks.splice(sourceTaskIndex, 1);
+        if (!movedTask) {
+          setActiveTask(null);
+          return;
         }
+        if (destinationTaskIndex === -1) {
+          newColumns[destColIndex].tasks.push(movedTask);
+          newIndex = newColumns[destColIndex].tasks.length - 1;
+        } else {
+          newColumns[destColIndex].tasks.splice(destinationTaskIndex, 0, movedTask);
+          newIndex = destinationTaskIndex;
+        }
+      }
 
-        return { columns: newColumns };
+      setBoard({ columns: newColumns });
+      await fetch(`/api/tasks/${activeId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ columnId: destinationColumn.id, position: newIndex })
       });
     }
 
     setActiveTask(null);
   };
 
-  const handleToggleCheck = (taskId: string) => {
+  const handleToggleCheck = async (taskId: string) => {
+    let newChecked = false;
     setBoard(prevBoard => {
       const newColumns = prevBoard.columns.map(column => ({
         ...column,
-        tasks: column.tasks.map(task =>
-          task.id === taskId ? { ...task, isChecked: !task.isChecked } : task
-        )
+        tasks: column.tasks.map(task => {
+          if (task.id === taskId) {
+            newChecked = !task.isChecked;
+            return { ...task, isChecked: newChecked };
+          }
+          return task;
+        })
       }));
       return { columns: newColumns };
     });
+    await fetch(`/api/tasks/${taskId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isChecked: newChecked })
+    });
   };
 
-  const handleAddTask = (columnId: string, task: Omit<Task, 'id'>) => {
-    const newTask: Task = { ...task, id: crypto.randomUUID() };
+  const handleAddTask = async (columnId: string, task: Omit<Task, 'id'>) => {
+    const res = await fetch('/api/tasks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...task, columnId })
+    });
+    const newTask: Task = await res.json();
     setBoard(prevBoard => {
       const newColumns = prevBoard.columns.map(column =>
         column.id === columnId

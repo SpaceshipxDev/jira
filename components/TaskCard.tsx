@@ -52,7 +52,7 @@ export function TaskCard({ task, onToggleCheck }: TaskCardProps) {
       style={style}
       {...attributes}
       {...listeners}
-      className={`bg-white rounded-md border border-gray-200 p-3 mb-2 cursor-move hover:shadow-md transition-shadow ${
+      className={`bg-white rounded-md border border-gray-200 p-3 cursor-move hover:shadow-md transition-shadow ${
         isDragging ? 'shadow-lg' : ''
       }`}
     >
