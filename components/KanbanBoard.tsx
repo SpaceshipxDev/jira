@@ -151,9 +151,16 @@ export function KanbanBoard({ initialData }: KanbanBoardProps) {
     });
   };
 
-  const handleAddTask = (columnId: string) => {
-    // Placeholder for add task functionality
-    console.log('Add task to column:', columnId);
+  const handleAddTask = (columnId: string, task: Omit<Task, 'id'>) => {
+    const newTask: Task = { ...task, id: crypto.randomUUID() };
+    setBoard(prevBoard => {
+      const newColumns = prevBoard.columns.map(column =>
+        column.id === columnId
+          ? { ...column, tasks: [...column.tasks, newTask] }
+          : column
+      );
+      return { columns: newColumns };
+    });
   };
 
   return (

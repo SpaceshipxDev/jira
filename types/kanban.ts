@@ -11,7 +11,7 @@ export interface Task {
       text: string;
       color: string;
     }[];
-    issueKey: string;
+    manufacturingKey: string;
     priority?: 'highest' | 'high' | 'medium' | 'low' | 'lowest';
     type?: 'task' | 'bug' | 'story';
     isChecked?: boolean;
